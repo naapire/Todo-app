@@ -1,7 +1,7 @@
-import { COLUMNS } from "./constants/columns";
-import { useKanban } from "./hooks/useKanban";
-import BoardHeader from "./components/BoardHeader";
-import Column from "./components/Column";
+import { COLUMNS } from "../constants/columns";
+import { useKanban } from "../hooks/useKanban";
+import BoardHeader from "../components/BoardHeader";
+import Column from "../components/Column";
 
 export default function KanbanBoard() {
   const {
