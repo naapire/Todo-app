@@ -65,7 +65,6 @@ export default function Login() {
       await signInWithPopup(auth, googleProvider);
       navigate("/kanban-board");
     } catch (error) {
-      // Show error immediately based on error code
       if (error.code === "auth/popup-closed-by-user" || error.code === "auth/cancelled-popup-request") {
         showError("Sign-in cancelled. Please try again.", 3000);
       } else if (error.code === "auth/popup-blocked") {
@@ -75,7 +74,6 @@ export default function Login() {
       } else {
         showError("Google sign-in failed. Please try again.", 4000);
       }
-      // ✅ Stop loading immediately so the error shows right away
       setIsGoogleLoading(false);
       return;
     }
@@ -172,15 +170,29 @@ export default function Login() {
           </button>
         </div>
 
-        {/* ✅ Hide toggle text when Google is loading */}
-        {!isGoogleLoading && (
+        {/* Show "Don't have an account?" only when on the LOGIN screen */}
+        {/* Show "Already have an account?" only when on the SIGN UP screen */}
+        {/* Hide everything when Google is loading */}
+        {!isGoogleLoading && !isLogin && !email && !password && (
           <p className="text-center text-white mt-4 text-sm">
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            Already have an account?{" "}
             <span
               className="underline cursor-pointer font-semibold"
-              onClick={() => { setIsLogin(!isLogin); setError(""); }}
+              onClick={() => { setIsLogin(true); setError(""); }}
             >
-              {isLogin ? "Sign Up" : "Login Here"}
+              Login Here
+            </span>
+          </p>
+        )}
+
+        {!isGoogleLoading && isLogin && !email && !password && (
+          <p className="text-center text-white mt-4 text-sm">
+            Don't have an account?{" "}
+            <span
+              className="underline cursor-pointer font-semibold"
+              onClick={() => { setIsLogin(false); setError(""); }}
+            >
+              Sign Up
             </span>
           </p>
         )}

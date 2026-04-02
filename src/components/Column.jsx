@@ -3,7 +3,8 @@ import TaskCard from "./TaskCard";
 
 export default function Column({ col, tasks, onDelete, onDrop, onDragStart, onDragEnd, onAddTask }) {
   const [isOver, setIsOver] = useState(false);
-  const [input, setInput] = useState("");
+  const [input, setInput]   = useState("");
+  const [error, setError]   = useState("");
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -16,15 +17,33 @@ export default function Column({ col, tasks, onDelete, onDrop, onDragStart, onDr
     onDrop(col.id);
   };
 
+  // Clear error as soon as the user starts typing again
+  const handleChange = (e) => {
+    setInput(e.target.value);
+    if (error) setError("");
+  };
+
   const submit = () => {
-    if (input.trim()) {
-      onAddTask(col.id, input.trim());
-      setInput("");
+    const trimmed = input.trim();
+
+    // Empty — do nothing
+    if (!trimmed) return;
+
+    // Only 1 character — show error prompt under the input
+    if (trimmed.length < 2) {
+      setError("Task must be at least 2 characters.");
+      return;
     }
+
+    // Valid — add task and reset
+    setError("");
+    onAddTask(col.id, trimmed);
+    setInput("");
   };
 
   return (
     <div className="flex flex-col w-56 flex-shrink-0">
+
       {/* Column Header */}
       <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border ${col.border} ${col.header} mb-2`}>
         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${col.dot}`} />
@@ -58,22 +77,34 @@ export default function Column({ col, tasks, onDelete, onDrop, onDragStart, onDr
       </div>
 
       {/* Add Task Input */}
-      <div className="mt-2 flex gap-1.5">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder="Add task…"
-          className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
-        />
-        <button
-          onClick={submit}
-          className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors text-base"
-        >
-          +
-        </button>
+      <div className="mt-2 flex flex-col gap-1">
+        <div className="flex gap-1.5">
+          <input
+            type="text"
+            value={input}
+            onChange={handleChange}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            placeholder="Add task…"
+            className={`flex-1 text-xs border rounded-lg px-3 py-2 bg-white text-gray-700 placeholder-gray-300 focus:outline-none transition-colors ${
+              error
+                ? "border-red-300 focus:border-red-400"   // red border when there's an error
+                : "border-gray-200 focus:border-gray-400"  // normal border
+            }`}
+          />
+          <button
+            onClick={submit}
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors text-base"
+          >
+            +
+          </button>
+        </div>
+
+        {/* Error message — only shows when there's an error */}
+        {error && (
+          <p className="text-xs text-red-400 px-1">{error}</p>
+        )}
       </div>
+
     </div>
   );
 }
