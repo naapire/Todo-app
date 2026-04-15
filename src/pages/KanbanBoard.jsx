@@ -1,18 +1,26 @@
 import { useNavigate }        from "react-router-dom";
 import { useAuthState }       from "react-firebase-hooks/auth";
-import { signOut }            from "firebase/auth";
+import { signOut, updateProfile } from "firebase/auth";
 import { auth }               from "../components/firebase";
 import { useKanban }          from "../hooks/useKanban";
 import { COLUMNS }            from "../constants/columns";
 import BoardHeader            from "../components/BoardHeader";
 import Column                 from "../components/Column";
+import { useState }           from "react";
 
 export default function KanbanBoard() {
   const [user, authLoading] = useAuthState(auth);
   const navigate            = useNavigate();
 
-  // Pass the user's unique Firebase id into the hook
-  // If user is not ready yet, pass null — the hook handles that safely
+  // ── Logout confirmation state ──────────────────────────
+  const [showLogoutModal, setShowLogoutModal]   = useState(false);
+
+  // ── Edit username state ────────────────────────────────
+  const [editingName, setEditingName]           = useState(false);
+  const [nameInput, setNameInput]               = useState("");
+  const [nameError, setNameError]               = useState("");
+  const [nameSaving, setNameSaving]             = useState(false);
+
   const {
     tasks,
     loading,
@@ -26,13 +34,46 @@ export default function KanbanBoard() {
     handleAddTask,
   } = useKanban(user?.uid ?? null);
 
+  // ── Logout ─────────────────────────────────────────────
   const handleLogout = async () => {
     await signOut(auth);
     navigate("/");
   };
 
-  // Show a full-screen spinner while Firebase checks who is logged in
-  // This prevents the board from flashing empty on refresh
+  // ── Save username ──────────────────────────────────────
+  const startEditing = () => {
+    setNameInput(user?.displayName || "");
+    setNameError("");
+    setEditingName(true);
+  };
+
+  const cancelEditing = () => {
+    setEditingName(false);
+    setNameError("");
+  };
+
+  const saveName = async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed) {
+      setNameError("Username cannot be empty.");
+      return;
+    }
+    if (trimmed.length < 2) {
+      setNameError("Username must be at least 2 characters.");
+      return;
+    }
+    setNameSaving(true);
+    try {
+      await updateProfile(auth.currentUser, { displayName: trimmed });
+      setEditingName(false);
+    } catch (err) {
+      setNameError("Failed to update username. Try again.");
+    } finally {
+      setNameSaving(false);
+    }
+  };
+
+  // Loading spinner
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-3">
@@ -51,6 +92,90 @@ export default function KanbanBoard() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
+
+      {/* ── Logout Confirmation Modal ───────────────────────── */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 flex flex-col items-center gap-4">
+            {/* Icon */}
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+              <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </div>
+
+            <div className="text-center">
+              <h3 className="text-base font-semibold text-gray-900">Log out?</h3>
+              <p className="text-sm text-gray-400 mt-1">Are you sure you want to log out of your account?</p>
+            </div>
+
+            <div className="flex gap-3 w-full mt-1">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex-1 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition"
+              >
+                Yes, Log out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Username Modal ─────────────────────────────── */}
+      {editingName && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4">
+            {/* Icon */}
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+              <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Edit Username</h3>
+              <p className="text-sm text-gray-400 mt-0.5">Enter a new display name for your account.</p>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => { setNameInput(e.target.value); setNameError(""); }}
+                onKeyDown={(e) => e.key === "Enter" && saveName()}
+                placeholder="Your name"
+                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-gray-700 placeholder-gray-300 focus:outline-none transition-colors ${
+                  nameError ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-blue-400"
+                }`}
+                autoFocus
+              />
+              {nameError && <p className="text-xs text-red-400 px-1">{nameError}</p>}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={cancelEditing}
+                className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveName}
+                disabled={nameSaving}
+                className="flex-1 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition disabled:opacity-50"
+              >
+                {nameSaving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Navbar ─────────────────────────────────────────── */}
       <div className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between">
@@ -72,13 +197,26 @@ export default function KanbanBoard() {
               {(user?.displayName || user?.email || "U").charAt(0).toUpperCase()}
             </div>
           )}
-          <span className="text-sm text-gray-600 hidden sm:block">
-            {user?.displayName || user?.email}
-          </span>
 
-          {/* Logout */}
+          {/* Username — click the pencil to edit */}
+          <div className="hidden sm:flex items-center gap-1">
+            <span className="text-sm text-gray-600">
+              {user?.displayName || user?.email}
+            </span>
+            <button
+              onClick={startEditing}
+              title="Edit username"
+              className="p-1 rounded-md text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Logout — now opens modal */}
           <button
-            onClick={handleLogout}
+            onClick={() => setShowLogoutModal(true)}
             className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 border border-gray-200 hover:border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-all"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
