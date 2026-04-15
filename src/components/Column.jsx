@@ -17,7 +17,6 @@ export default function Column({ col, tasks, onDelete, onDrop, onDragStart, onDr
     onDrop(col.id);
   };
 
-  // Clear error as soon as the user starts typing again
   const handleChange = (e) => {
     setInput(e.target.value);
     if (error) setError("");
@@ -26,8 +25,11 @@ export default function Column({ col, tasks, onDelete, onDrop, onDragStart, onDr
   const submit = () => {
     const trimmed = input.trim();
 
-    // Empty — do nothing
-    if (!trimmed) return;
+    // ✅ Empty — show prompt instead of doing nothing
+    if (!trimmed) {
+      setError("You cannot add an empty task.");
+      return;
+    }
 
     // Only 1 character — show error prompt under the input
     if (trimmed.length < 2) {
@@ -87,8 +89,8 @@ export default function Column({ col, tasks, onDelete, onDrop, onDragStart, onDr
             placeholder="Add task…"
             className={`flex-1 text-xs border rounded-lg px-3 py-2 bg-white text-gray-700 placeholder-gray-300 focus:outline-none transition-colors ${
               error
-                ? "border-red-300 focus:border-red-400"   // red border when there's an error
-                : "border-gray-200 focus:border-gray-400"  // normal border
+                ? "border-red-300 focus:border-red-400"
+                : "border-gray-200 focus:border-gray-400"
             }`}
           />
           <button
@@ -99,9 +101,9 @@ export default function Column({ col, tasks, onDelete, onDrop, onDragStart, onDr
           </button>
         </div>
 
-        {/* Error message — only shows when there's an error */}
+        {/* Error message */}
         {error && (
-          <p className="text-xs text-red-400 px-1">{error}</p>
+          <p className="text-xs text-red-400 px-1 animate-pulse">{error}</p>
         )}
       </div>
 
